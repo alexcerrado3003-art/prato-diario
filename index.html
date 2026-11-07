@@ -1162,6 +1162,7 @@ function dayIndicators(t, g) {
   const L = limitsFor(g), maxSt = (p) => (p <= 100 ? ["good", "dentro"] : ["warn", "acima"]);
   const note = (n) => (n ? `<span class="xs muted">${n} ${n === 1 ? "item" : "itens"} sem dado</span>` : "");
   const tileN = (lab, v, goal, unit, st, n) => tile(lab, v, goal, unit, st).replace(/<\/div>$/, note(n) + "</div>");
+  tiles.push(tile("Carboidrato", t.c, g.c, "g", (p) => (p < 85 ? ["", "abaixo"] : p <= 110 ? ["good", "na meta"] : ["warn", "acima"])));
   tiles.push(tile("Gordura", t.f, g.f, "g", (p) => (p < 85 ? ["", "abaixo"] : p <= 110 ? ["good", "na meta"] : ["warn", "acima"])));
   tiles.push(tileN("Gordura saturada", t.sat, L.sat, "g", maxSt, t.unk.sat));
   tiles.push(tileN("Sódio", t.na, L.na, "mg", maxSt, t.unk.na));
