@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Prato Diário",
+    "slug": "prato-diario",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#ffffff",
+    "ios": {
+      "bundleIdentifier": "com.SEUNOME.pratodiario",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Para fotografar o prato e registrar a refeição.",
+        "NSPhotoLibraryUsageDescription": "Para escolher a foto de um prato ou de um laudo de bioimpedância."
+      }
+    },
+    "android": {
+      "package": "com.SEUNOME.pratodiario",
+      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#D4EEE6" },
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "extra": {
+      "appUrl": "https://SEU-SITE.netlify.app/"
+    }
+  }
+}
