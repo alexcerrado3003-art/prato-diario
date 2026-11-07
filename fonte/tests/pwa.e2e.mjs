@@ -263,6 +263,7 @@ await check("perfil mostra a conta, o uso de IA do dia e Sair", async () => {
   await page.getByRole("heading", { name: "Conta deste celular" }).waitFor();
   await page.getByText(/alex@exemplo\.com/).waitFor();
   await page.getByText(/1 análise de IA hoje/).waitFor();
+  await page.getByRole("heading", { name: "Instalar no celular" }).waitFor(); // no navegador, ensina a instalar
   await page.getByRole("heading", { name: "Conta deste celular" }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(SHOTS, "P06-perfil.png") });
 });

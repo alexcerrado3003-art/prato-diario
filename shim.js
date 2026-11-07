@@ -287,12 +287,26 @@
       usage = data || { calls: 0, in_tok: 0, out_tok: 0 };
     } catch {}
   }
+  // instalação: o Chrome do Android entrega o pedido de instalação; guardamos para o botão do Perfil
+  let installEvt = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; });
+  window.addEventListener("appinstalled", () => { installEvt = null; });
+  const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+  function installHtml() {
+    if (standalone()) return "";
+    const btn = installEvt ? `<button class="btn primary" data-pd-act="install">Instalar app</button>` : "";
+    const help = isIOS()
+      ? `No Safari, toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>.`
+      : `${installEvt ? "Ou, no" : "No"} Chrome, toque em <b>⋮</b> e depois em <b>Instalar app</b>. Se o Chrome disser que já está instalado, procure <b>Prato Diário</b> na lista de apps (arraste a tela inicial para cima) e segure o ícone para pôr na tela inicial. Se não aparecer, desinstale em <b>Configurações → Apps → Prato Diário</b> e volte aqui.`;
+    return `<section class="card stack" style="gap:8px"><h2 class="lg">Instalar no celular</h2><p class="sm muted">${help}</p>${btn ? `<div class="row">${btn}</div>` : ""}</section>`;
+  }
   window.PD_PWA = {
     profileHtml() {
       const u = usage ? `${usage.calls} ${usage.calls === 1 ? "análise" : "análises"} de IA hoje` : "";
       return `<section class="card stack" style="gap:8px"><h2 class="lg">Conta deste celular</h2>
         <p class="sm muted" style="overflow-wrap:anywhere">Conectada como <b>${esc(user?.email || "")}</b>.${u ? " " + esc(u) + "." : ""} Seus dados ficam no seu Supabase; a foto vai para a API do Claude pela sua chave.</p>
-        <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn secondary" data-pd-act="logout">Sair desta conta</button></div></section>`;
+        <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn secondary" data-pd-act="logout">Sair desta conta</button></div></section>` + installHtml();
     },
   };
   document.addEventListener("click", async (ev) => {
@@ -300,6 +314,7 @@
     if (!b) return;
     ev.preventDefault(); ev.stopPropagation();
     if (b.dataset.pdAct === "logout") { try { await sb.auth.signOut(); } catch {} location.reload(); }
+    if (b.dataset.pdAct === "install" && installEvt) { const e = installEvt; installEvt = null; try { await e.prompt(); await e.userChoice; } catch {} }
   }, true);
 
   /* ---------------------------------------------------------------- a ponte */

@@ -1,6 +1,6 @@
 // Prato Diário — service worker: guarda o app no celular para abrir rápido e sem internet.
 // Os dados (Supabase) e a IA sempre vão para a rede; nada disso fica em cache.
-const VERSION = "pd-7f08b5a20735";
+const VERSION = "pd-e04a63d0f5ee";
 const FILES = ["./", "index.html", "shim.js", "config.js", "vendor/supabase.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
