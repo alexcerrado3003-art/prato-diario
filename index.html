@@ -276,6 +276,12 @@ table.nut td:last-child { text-align: right; font-variant-numeric: tabular-nums;
 .list-row:last-child { border-bottom: 0; }
 .confirm { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--r-md); border: 1px solid var(--danger); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+button.sidestat.goal-btn{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:6px 8px;border-radius:14px;min-height:44px}
+button.sidestat.goal-btn:hover,button.sidestat.goal-btn:focus-visible{background:var(--raised,rgba(0,0,0,.04))}
+button.sidestat.goal-btn .xs{display:inline-flex;align-items:center;gap:3px;text-decoration:underline;text-underline-offset:2px}
+button.sidestat.goal-btn svg{width:12px;height:12px}
+label.check{display:flex;gap:10px;align-items:flex-start;min-height:44px;padding:8px 0;cursor:pointer}
+label.check input{width:20px;height:20px;margin-top:2px;flex:none;accent-color:var(--accent,#1f2d45)}
 </style>
 </head>
 <body>
@@ -584,7 +590,14 @@ const S = {
   week: null,
 };
 const emptyDay = (d) => ({ date: d, meals: [], water: 0 });
-function goalFor() { const g = S.main.goal || { kcal: 2000, p: 100, c: 250, f: 62, water: 2000 }; return { fib: Math.round((g.kcal / 1000) * 14), ...g }; }
+// meta geral (Perfil) ou, quando o dia aberto tem meta própria, a meta daquele dia
+function goalFor(scope) {
+  const g = S.main.goal || { kcal: 2000, p: 100, c: 250, f: 62, water: 2000 };
+  const base = { fib: Math.round((g.kcal / 1000) * 14), ...g };
+  if (scope !== "base" && S.day && S.day.goal && S.day.goal.kcal > 0) return { ...base, ...S.day.goal, dayOverride: true };
+  return base;
+}
+const goalSourceLabel = (g) => (g.source === "nutri" ? "Plano da nutricionista" : g.source === "manual" ? "Definida por você" : "Calculada pelo app");
 // divisão sugerida da meta entre as refeições
 const SPLIT = { breakfast: 0.25, lunch: 0.35, dinner: 0.3, snack: 0.1 };
 
@@ -733,7 +746,7 @@ function vHoje() {
   }).join("");
   const nothing = !S.day.meals.length ? `<div class="empty">${ic("camera")}<p>Nada registrado ${S.date === today() ? "hoje" : "neste dia"}. Comece pela foto da próxima refeição.</p></div>` : "";
   return `<div class="shell"><div class="stack">${head}${err}${local}
-    <section class="band"><div class="today-sum"><div class="row" style="justify-content:center;gap:12px;width:100%"><div class="sidestat"><b class="num">${fmt(t.kcal)}</b><span class="xs">Consumidas</span></div>${ring(t.kcal, g.kcal)}<div class="sidestat"><b class="num">${fmt(g.kcal)}</b><span class="xs">Meta</span></div></div><div class="macros">${macroBar("Proteína", t.p, g.p, "--protein")}${macroBar("Carboidrato", t.c, g.c, "--carbs")}${macroBar("Gordura", t.f, g.f, "--fat")}${macroBar("Fibra", t.fib, g.fib, "--fiber")}</div></div>
+    <section class="band"><div class="today-sum"><div class="row" style="justify-content:center;gap:12px;width:100%"><div class="sidestat"><b class="num">${fmt(t.kcal)}</b><span class="xs">Consumidas</span></div>${ring(t.kcal, g.kcal)}<button class="sidestat goal-btn" data-act="edit-goal" aria-label="Meta de ${fmt(g.kcal)} kcal${g.dayOverride ? " só neste dia" : ""}. Ajustar"><b class="num">${fmt(g.kcal)}</b><span class="xs">${g.dayOverride ? "Meta do dia" : "Meta"} ${ic("pen")}</span></button></div><div class="macros">${macroBar("Proteína", t.p, g.p, "--protein")}${macroBar("Carboidrato", t.c, g.c, "--carbs")}${macroBar("Gordura", t.f, g.f, "--fat")}${macroBar("Fibra", t.fib, g.fib, "--fiber")}</div></div>
 </section>
     ${dayIndicators(t, g)}
     <section class="card"><div class="water"><span style="color:var(--carbs)">${ic("drop", 'style="width:22px;height:22px"')}</span><div class="grow" style="flex:1;min-width:0"><div class="row" style="justify-content:space-between"><b>Água</b><span class="num sm"><b>${fmt1(S.day.water / 1000)}</b> <span class="muted">/ ${fmt1(g.water / 1000)} L</span></span></div><div class="cups" style="margin-top:8px" aria-hidden="true">${Array.from({ length: cups }, (_, i) => `<span class="cup ${i < on ? "on" : ""}"></span>`).join("")}</div></div></div>
@@ -1190,7 +1203,7 @@ const signed = (x, u, dec = 1) => `${x > 0 ? "+" : x < 0 ? "−" : "±"}${dec ? 
 function bodyCompare(ex) {
   if (!ex.length) return "";
   if (!Array.isArray(S.bodyDays)) return `<div class="sk" style="height:120px"></div>`;
-  const g = goalFor(), last = ex[ex.length - 1];
+  const g = goalFor("base"), last = ex[ex.length - 1];
   const statLine = (s) => (s.logged ? `Média de <b>${fmt(s.kcal)} kcal/dia</b> (meta ${fmt(g.kcal)}), proteína ${fmt(s.p)} g/dia, fibra ${fmt(s.fib)} g/dia${s.waterDays ? `, água ${fmt1(s.water / 1000)} L/dia (meta ${fmt1(g.water / 1000)} L)` : ", água não registrada"}. ${s.logged} de ${s.n} dias com refeições registradas.` : "Sem refeições registradas nesse período.");
   const ch = (a, b, k, u) => (a[k] != null && b[k] != null ? signed(r1(b[k] - a[k]), u) : "—");
   const periods = []; for (let i = 1; i < ex.length; i++) periods.push([ex[i - 1], ex[i]]);
@@ -1270,7 +1283,7 @@ function vCustom(t) {
 
 /* ---------- S15 progresso */
 function vProgresso() {
-  const g = goalFor();
+  const g = goalFor("base");
   const ws = Object.entries(S.main.weights).sort((a, b) => a[0].localeCompare(b[0]));
   const last = ws[ws.length - 1];
   const target = num(S.main.profile?.target) || null;
@@ -1335,12 +1348,12 @@ async function loadWeek() {
 
 /* ---------- S16 perfil */
 function vPerfil() {
-  const p = S.main.profile, g = goalFor();
+  const p = S.main.profile, g = goalFor("base");
   const confirm = S.confirm === "wipe" ? `<div class="confirm" role="alert"><b>Apagar perfil, metas, alimentos e refeições salvas?</b><span class="sm muted">Os dias registrados também ficam vazios na próxima abertura. Não dá para desfazer.</span><div class="row"><button class="btn secondary" data-act="cancel-confirm">Manter tudo</button><button class="btn danger" data-act="wipe">Apagar</button></div></div>` : "";
   const nm = personName();
   return `<div class="shell"><div class="stack">${topbar("Perfil", { noBack: true })}
     <section class="band row" style="gap:14px"><span class="avatar lg" aria-hidden="true">${esc(initials(nm))}</span><div class="grow" style="flex:1;min-width:0"><p class="label">Dona(o) do perfil</p><p class="lg" style="overflow-wrap:anywhere">${esc(nm || "Sem nome")}</p></div><button class="btn secondary" data-act="edit-profile" style="min-height:40px">Editar</button></section>
-    <section class="card stack" style="gap:6px"><div class="row"><h2 class="lg grow">Meta diária</h2><button class="btn ghost" data-act="edit-goal">Ajustar</button></div>
+    <section class="card stack" style="gap:6px"><div class="row"><h2 class="lg grow">Meta diária</h2><button class="btn ghost" data-act="edit-goal" data-scope="all">Ajustar</button></div><p class="xs muted">${esc(goalSourceLabel(g))}</p>
       <p class="xl num">${fmt(g.kcal)} <span class="lg muted">kcal</span></p><p class="sm muted num">Proteína ${fmt(g.p)} g · Carboidrato ${fmt(g.c)} g · Gordura ${fmt(g.f)} g · Fibra ${fmt(g.fib)} g · Água ${fmt1(g.water / 1000)} L</p></section>
     ${profileCard()}
     <section class="card" style="padding-block:4px">
@@ -1357,12 +1370,21 @@ function vPerfil() {
 // [nome, % proteína, % carboidrato, % gordura, fibra por 1000 kcal]
 const STYLES = { balanced: ["Equilibrada", 20, 50, 30, 14], protein: ["Mais proteína", 30, 40, 30, 14], lowcarb: ["Menos carboidrato", 30, 30, 40, 14], keto: ["Cetogênica", 25, 5, 70, 10], plant: ["Vegetal", 18, 55, 27, 18] };
 function vGoalEdit() {
-  const g = goalFor();
-  const f = (id, l, v) => `<div class="field"><label for="${id}">${l}</label><input class="input num" id="${id}" inputmode="numeric" value="${r0(v)}"></div>`;
-  return `<div class="shell full"><div class="stack">${topbar("Ajustar meta")}<p class="sm muted">Mude se um profissional te passou outros números, ou se quiser ajustar pelo seu progresso.</p>
-    <div class="field"><span class="lbl">Distribuição por estilo</span><div class="chips">${Object.entries(STYLES).map(([k, s]) => `<button class="chip" data-act="goal-style" data-k="${k}" aria-pressed="${g.style === k}">${s[0]}</button>`).join("")}</div><span class="hint">Preenche proteína, carboidrato e gordura a partir das calorias. Você pode ajustar depois.</span></div>
-    <div class="grid2">${f("gk", "Calorias (kcal)", g.kcal)}${f("gw", "Água (ml)", g.water)}${f("gp", "Proteína (g)", g.p)}${f("gc", "Carboidrato (g)", g.c)}${f("gf", "Gordura (g)", g.f)}${f("gfib", "Fibra (g)", g.fib)}</div><p class="hint" id="g-sum"></p><p class="err" id="g-err" role="alert"></p></div></div>
-  <div class="actionbar"><div class="inner"><button class="btn primary lg" data-act="save-goal">Salvar meta</button></div></div>`;
+  const scope = S.goalScope || "all";
+  const g0 = scope === "day" ? goalFor() : goalFor("base");
+  const g = S.goalDraft ? { ...g0, ...S.goalDraft } : g0;
+  const src = S.goalSrc ?? (g.source || "");
+  const f = (id, l, v) => `<div class="field"><label for="${id}">${l}</label><input class="input num" id="${id}" inputmode="decimal" value="${r0(v)}"></div>`;
+  const dayTxt = S.date === today() ? "hoje" : dayLabel(S.date).toLowerCase();
+  const hasDay = !!(S.day && S.day.goal);
+  return `<div class="shell full"><div class="stack">${topbar("Ajustar meta")}<p class="sm muted">Coloque os números do plano da sua nutricionista ou ajuste pelo seu progresso.</p>
+    <div class="field"><span class="lbl">Vale para</span><div class="seg" role="group" aria-label="Vale para"><button aria-pressed="${scope === "all"}" data-act="goal-scope" data-k="all">Todos os dias</button><button aria-pressed="${scope === "day"}" data-act="goal-scope" data-k="day">Só ${esc(dayTxt)}</button></div>
+      <span class="hint">${scope === "day" ? `Muda a meta apenas de ${esc(dayTxt)} (por exemplo, dia de treino ou um ajuste pontual do plano). Os outros dias continuam com a meta geral.` : "Vira a meta geral a partir de agora. Dias que já têm meta própria continuam como estão."}</span></div>
+    <label class="check"><input type="checkbox" id="g-nutri" ${src === "nutri" ? "checked" : ""}> <span>É o plano da minha nutricionista</span></label>
+    <div class="field"><span class="lbl">Distribuição por estilo</span><div class="chips">${Object.entries(STYLES).map(([k, s]) => `<button class="chip" data-act="goal-style" data-k="${k}" aria-pressed="${g.style === k}">${s[0]}</button>`).join("")}</div><span class="hint">Preenche proteína, carboidrato e gordura a partir das calorias. Se o plano já traz os gramas, digite direto.</span></div>
+    <div class="grid2">${f("gk", "Calorias (kcal)", g.kcal)}${f("gw", "Água (ml)", g.water)}${f("gp", "Proteína (g)", g.p)}${f("gc", "Carboidrato (g)", g.c)}${f("gf", "Gordura (g)", g.f)}${f("gfib", "Fibra (g)", g.fib)}</div><p class="hint" id="g-sum"></p><p class="err" id="g-err" role="alert"></p>
+    ${scope === "day" && hasDay ? `<button class="btn secondary" data-act="goal-day-clear">Voltar ${esc(dayTxt)} para a meta geral (${fmt(goalFor("base").kcal)} kcal)</button>` : ""}</div></div>
+  <div class="actionbar"><div class="inner"><button class="btn primary lg" data-act="save-goal">${scope === "day" ? `Salvar meta de ${esc(dayTxt)}` : "Salvar meta geral"}</button></div></div>`;
 }
 function vProfileEdit() {
   const p = S.pe;
@@ -1374,7 +1396,8 @@ function vProfileEdit() {
     <div class="grid2"><div class="field"><label for="pe-by">Ano de nascimento</label><input class="input num" id="pe-by" inputmode="numeric" value="${esc(p.birthYear)}"></div><div class="field"><label for="pe-h">Altura (cm)</label><input class="input num" id="pe-h" inputmode="numeric" value="${esc(p.height)}"></div><div class="field"><label for="pe-w">Peso atual (kg)</label><input class="input num" id="pe-w" inputmode="decimal" value="${esc(plain(S.main.weights[Object.keys(S.main.weights).sort().pop()] || p.weight))}"></div><div class="field"><label for="pe-t">Peso desejado (kg)</label><input class="input num" id="pe-t" inputmode="decimal" value="${esc(p.target || "")}"></div></div>
     <div class="field"><label for="pe-a">Atividade</label><select class="input" id="pe-a">${Object.entries(ACT).map(([k, v]) => `<option value="${k}" ${p.activity === k ? "selected" : ""}>${v[1]} — ${v[2]}</option>`).join("")}</select></div>
     <p class="err" id="pe-err" role="alert"></p></div></div>
-  <div class="actionbar"><div class="inner"><button class="btn primary lg" data-act="save-profile">Salvar e recalcular meta</button></div></div>`;
+  ${S.main.goal && (S.main.goal.source === "nutri" || S.main.goal.source === "manual") ? `<label class="check"><input type="checkbox" id="pe-recalc" ${S.peRecalc ? "checked" : ""}> <span>Recalcular a meta pelos dados novos (substitui ${S.main.goal.source === "nutri" ? "o plano da nutricionista" : "a meta que você definiu"})</span></label>` : ""}
+  <div class="actionbar"><div class="inner"><button class="btn primary lg" data-act="save-profile">${S.main.goal && (S.main.goal.source === "nutri" || S.main.goal.source === "manual") ? "Salvar dados" : "Salvar e recalcular meta"}</button></div></div>`;
 }
 
 /* ------------------------------------------------------------------ fluxo de IA */
@@ -1692,7 +1715,13 @@ Responda SOMENTE com JSON: {"resumo":"o que mudou no corpo, em até 35 palavras"
     if (t.then === "pick") { const target = S.stack[S.stack.length - 2]; S.stack[S.stack.length - 1] = { v: "food", ref: "c" + rec.id, target: target?.target || "draft", swapIndex: target?.swapIndex, qty: 1, portion: 0 }; render(); }
     else pop();
   },
-  "edit-goal"() { push({ v: "goal" }); },
+  "edit-goal"(el) { S.goalScope = el?.dataset?.scope || (S.day && S.day.goal ? "day" : "all"); S.goalSrc = null; S.goalStyle = null; S.goalDraft = null; push({ v: "goal" }); },
+  "goal-scope"(el) {
+    S.goalSrc = $("#g-nutri")?.checked ? "nutri" : "";
+    S.goalDraft = { kcal: num($("#gk").value), water: num($("#gw").value), p: num($("#gp").value), c: num($("#gc").value), f: num($("#gf").value), fib: num($("#gfib").value) };
+    S.goalScope = el.dataset.k; render();
+  },
+  "goal-day-clear"() { if (!S.day) return; const d = { ...S.day }; delete d.goal; S.day = d; saveDay(); pop(); toast("Este dia voltou para a meta geral"); },
   "goal-style"(el) {
     const s = STYLES[el.dataset.k], k = num($("#gk").value); if (!s || !(k > 0)) return;
     $("#gp").value = r0((k * s[1]) / 100 / 4); $("#gc").value = r0((k * s[2]) / 100 / 4); $("#gf").value = r0((k * s[3]) / 100 / 9); $("#gfib").value = r0((k / 1000) * s[4]);
@@ -1704,15 +1733,21 @@ Responda SOMENTE com JSON: {"resumo":"o que mudou no corpo, em até 35 palavras"
     const g = { style: S.goalStyle || goalFor().style || null, kcal: r0(num($("#gk").value)), water: r0(num($("#gw").value)), p: r0(num($("#gp").value)), c: r0(num($("#gc").value)), f: r0(num($("#gf").value)), fib: r0(num($("#gfib").value)) };
     if (!(g.kcal >= 800 && g.kcal <= 6000)) { $("#g-err").textContent = "Use uma meta entre 800 e 6.000 kcal."; return; }
     if ([g.p, g.c, g.f, g.fib, g.water].some((x) => !(x >= 0))) { $("#g-err").textContent = "Os valores precisam ser números positivos."; return; }
-    S.main.goal = g; S.goalStyle = null; saveMain(); pop(); toast("Meta atualizada");
+    const nutri = !!$("#g-nutri")?.checked; S.goalDraft = null;
+    if ((S.goalScope || "all") === "day") {
+      S.day = { ...S.day, goal: { ...g, source: nutri ? "nutri" : "manual" } }; saveDay();
+      S.goalStyle = null; pop(); toast(`Meta de ${S.date === today() ? "hoje" : dayLabel(S.date).toLowerCase()}: ${fmt(g.kcal)} kcal`); return;
+    }
+    S.main.goal = { ...g, source: nutri ? "nutri" : "manual" }; S.goalStyle = null; saveMain(); pop(); toast(nutri ? "Plano da nutricionista salvo como meta geral" : "Meta geral atualizada");
   },
-  "edit-profile"() { S.pe = { ...S.main.profile }; push({ v: "profile" }); },
+  "edit-profile"() { S.pe = { ...S.main.profile }; S.peRecalc = false; push({ v: "profile" }); },
   "pe-set"(el) { keepPe(); S.pe[el.dataset.f] = el.dataset.v; render(); },
   "save-profile"() {
     keepPe(); const p = { ...S.pe, name: ($("#pe-name").value || "").trim().slice(0, 40), birthYear: $("#pe-by").value.trim(), height: num($("#pe-h").value), weight: num($("#pe-w").value), target: $("#pe-t").value.trim() ? num($("#pe-t").value) : "", activity: $("#pe-a").value };
     if (!onbValid({ step: 1, birthYear: p.birthYear }) || !onbValid({ step: 2, height: p.height, weight: p.weight, target: p.target })) { $("#pe-err").textContent = "Confira ano de nascimento (13 a 100 anos), altura (100–230 cm) e peso (30–300 kg)."; return; }
-    S.main.profile = p; S.main.goal = calcGoal(p); S.main.weights[today()] = r1(p.weight);
-    saveMain(); pop(); toast(`Nova meta: ${fmt(S.main.goal.kcal)} kcal`);
+    const keep = S.main.goal && (S.main.goal.source === "nutri" || S.main.goal.source === "manual") && !S.peRecalc;
+    S.main.profile = p; if (!keep) S.main.goal = calcGoal(p); S.main.weights[today()] = r1(p.weight);
+    saveMain(); pop(); toast(keep ? `Dados salvos. A meta ${S.main.goal.source === "nutri" ? "da nutricionista" : "que você definiu"} foi mantida.` : `Nova meta: ${fmt(S.main.goal.kcal)} kcal`);
   },
   async export() {
     let days = [];
@@ -1745,7 +1780,7 @@ Responda SOMENTE com JSON: {"resumo":"o que mudou no corpo, em até 35 palavras"
   },
   undo() { const u = S.undo; S.undo = null; $("#toast-slot").innerHTML = ""; u?.(); },
 };
-function keepPe() { const g = (id) => $("#" + id)?.value; if ($("#pe-by")) Object.assign(S.pe, { name: g("pe-name"), birthYear: g("pe-by"), height: g("pe-h"), weight: g("pe-w"), target: g("pe-t"), activity: g("pe-a") }); }
+function keepPe() { if ($("#pe-recalc")) S.peRecalc = $("#pe-recalc").checked; const g = (id) => $("#" + id)?.value; if ($("#pe-by")) Object.assign(S.pe, { name: g("pe-name"), birthYear: g("pe-by"), height: g("pe-h"), weight: g("pe-w"), target: g("pe-t"), activity: g("pe-a") }); }
 function keepQuizOther() { const el = $("#quiz-other"); if (el && S.quiz) { const q = quizList()[S.quiz.i]; S.quiz.a[q.id + "_other"] = el.value.trim().slice(0, 80); } }
 function defaultPortion(ref, t) {
   const f = foodByRef(ref); if (!f) return 0;
