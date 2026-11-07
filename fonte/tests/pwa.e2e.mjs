@@ -122,6 +122,8 @@ const ok = (v, m) => { if (!v) throw new Error(m); };
 async function newCtx() {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: "pt-BR" });
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  // o pwa/config.js publicado já vem com o banco real; nos testes começa vazio (cada teste que quiser preenche)
+  await ctx.route(BASE + "config.js", (r) => r.fulfill({ contentType: "text/javascript", body: "window.PD_CONFIG={};" }));
   await ctx.route(SB + "/**", async (route) => {
     const req = route.request();
     const r = await supabase(req.method(), req.url(), await req.allHeaders(), req.postData()); if (process.env.LOGREQ) console.log("    ", req.method(), decodeURIComponent(req.url().slice(SB.length)).slice(0, 150), r.status, String(r.body).slice(0, 80));
